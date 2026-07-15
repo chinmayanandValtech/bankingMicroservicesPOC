@@ -5,6 +5,7 @@ import com.bank.customer_service.dto.CustomerRequestDTO;
 import com.bank.customer_service.dto.CustomerResponseDTO;
 import com.bank.customer_service.entity.Customer;
 import com.bank.customer_service.exception.CustomerAlreadyExistsException;
+import com.bank.customer_service.exception.ResourceNotFoundException;
 import com.bank.customer_service.repository.CustomerRepository;
 import com.bank.customer_service.service.CustomerService;
 import org.springframework.stereotype.Service;
@@ -98,7 +99,7 @@ public class CustomerServiceImpl implements CustomerService {
                 customerRepository.findById(customerId);
 
         Customer customer = optionalCustomer.orElseThrow(
-                () -> new RuntimeException("Customer not found")
+                () -> new ResourceNotFoundException("Customer not found")
         );
 
         return CustomerResponseDTO.builder()
@@ -117,7 +118,7 @@ public class CustomerServiceImpl implements CustomerService {
     public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
 
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
         customer.setFirstName(requestDTO.getFirstName());
         customer.setLastName(requestDTO.getLastName());
@@ -145,7 +146,7 @@ public class CustomerServiceImpl implements CustomerService {
     public void deleteCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
         customerRepository.delete(customer);
 
