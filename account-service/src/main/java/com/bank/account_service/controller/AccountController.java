@@ -1,7 +1,12 @@
 package com.bank.account_service.controller;
 
+import com.bank.account_service.dto.AccountBalanceResponse;
 import com.bank.account_service.dto.AccountRequest;
 import com.bank.account_service.dto.AccountResponse;
+import com.bank.account_service.dto.DepositRequest;
+import com.bank.account_service.dto.TransferRequest;
+import com.bank.account_service.dto.TransferResponse;
+import com.bank.account_service.dto.WithdrawRequest;
 import com.bank.account_service.service.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -46,5 +51,22 @@ public class AccountController {
     public ResponseEntity<Void> deleteAccount(@PathVariable Long id) {
         accountService.deleteAccount(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{accountNumber}/deposit")
+    public ResponseEntity<AccountBalanceResponse> deposit(@PathVariable String accountNumber,
+                                                            @Valid @RequestBody DepositRequest request) {
+        return ResponseEntity.ok(accountService.deposit(accountNumber, request));
+    }
+
+    @PostMapping("/{accountNumber}/withdraw")
+    public ResponseEntity<AccountBalanceResponse> withdraw(@PathVariable String accountNumber,
+                                                             @Valid @RequestBody WithdrawRequest request) {
+        return ResponseEntity.ok(accountService.withdraw(accountNumber, request));
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<TransferResponse> transfer(@Valid @RequestBody TransferRequest request) {
+        return ResponseEntity.ok(accountService.transfer(request));
     }
 }

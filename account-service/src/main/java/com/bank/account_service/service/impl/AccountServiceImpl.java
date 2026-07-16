@@ -1,16 +1,24 @@
 package com.bank.account_service.service.impl;
 
 import com.bank.account_service.client.CustomerClient;
+import com.bank.account_service.dto.AccountBalanceResponse;
 import com.bank.account_service.dto.AccountRequest;
 import com.bank.account_service.dto.AccountResponse;
 import com.bank.account_service.dto.CustomerDto;
+import com.bank.account_service.dto.DepositRequest;
+import com.bank.account_service.dto.TransferRequest;
+import com.bank.account_service.dto.TransferResponse;
+import com.bank.account_service.dto.WithdrawRequest;
 import com.bank.account_service.entity.Account;
 import com.bank.account_service.enums.AccountStatus;
+import com.bank.account_service.exception.InsufficientBalanceException;
 import com.bank.account_service.exception.ResourceNotFoundException;
 import com.bank.account_service.repository.AccountRepository;
 import com.bank.account_service.service.AccountService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -73,7 +81,15 @@ public class AccountServiceImpl implements AccountService {
         List<Account> accounts = accountRepository.findAll();
 
         return accounts.stream()
-                .map(account -> toResponse(account, customerClient.getCustomerById(account.getCustomerId())))
+                .map(account -> {
+                    CustomerDto customer;
+                    try {
+                        customer = customerClient.getCustomerById(account.getCustomerId());
+                    } catch (ResourceNotFoundException ex) {
+                        customer = null;
+                    }
+                    return toResponse(account, customer);
+                })
                 .toList();
     }
 
@@ -98,5 +114,76 @@ public class AccountServiceImpl implements AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
 
         accountRepository.delete(account);
+    }
+
+    @Override
+    @Transactional
+    public AccountBalanceResponse deposit(String accountNumber, DepositRequest request) {
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
+
+        account.setBalance(account.getBalance().add(request.getAmount()));
+        Account savedAccount = accountRepository.save(account);
+
+        return AccountBalanceResponse.builder()
+                .accountNumber(savedAccount.getAccountNumber())
+                .balance(savedAccount.getBalance())
+                .updatedAt(savedAccount.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public AccountBalanceResponse withdraw(String accountNumber, WithdrawRequest request) {
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
+
+        if (account.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientBalanceException("Insufficient balance in account: " + accountNumber);
+        }
+
+        account.setBalance(account.getBalance().subtract(request.getAmount()));
+        Account savedAccount = accountRepository.save(account);
+
+        return AccountBalanceResponse.builder()
+                .accountNumber(savedAccount.getAccountNumber())
+                .balance(savedAccount.getBalance())
+                .updatedAt(savedAccount.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public TransferResponse transfer(TransferRequest request) {
+        if (request.getFromAccountNumber().equals(request.getToAccountNumber())) {
+            throw new IllegalArgumentException("Source and destination account cannot be the same.");
+        }
+
+        Account fromAccount = accountRepository.findByAccountNumber(request.getFromAccountNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("From account not found: " + request.getFromAccountNumber()));
+        Account toAccount = accountRepository.findByAccountNumber(request.getToAccountNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("To account not found: " + request.getToAccountNumber()));
+
+        if (fromAccount.getBalance().compareTo(request.getAmount()) < 0) {
+            throw new InsufficientBalanceException("Insufficient balance in account: " + request.getFromAccountNumber());
+        }
+
+        BigDecimal updatedFromBalance = fromAccount.getBalance().subtract(request.getAmount());
+        BigDecimal updatedToBalance = toAccount.getBalance().add(request.getAmount());
+
+        fromAccount.setBalance(updatedFromBalance);
+        toAccount.setBalance(updatedToBalance);
+
+        Account savedFromAccount = accountRepository.save(fromAccount);
+        Account savedToAccount = accountRepository.save(toAccount);
+
+        return TransferResponse.builder()
+                .fromAccountNumber(savedFromAccount.getAccountNumber())
+                .toAccountNumber(savedToAccount.getAccountNumber())
+                .amount(request.getAmount())
+                .fromAccountBalance(savedFromAccount.getBalance())
+                .toAccountBalance(savedToAccount.getBalance())
+                .updatedAt(savedFromAccount.getUpdatedAt())
+                .build();
     }
 }
