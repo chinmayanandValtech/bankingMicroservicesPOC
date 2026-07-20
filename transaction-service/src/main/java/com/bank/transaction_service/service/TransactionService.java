@@ -6,8 +6,11 @@ import java.util.List;
 
 public interface TransactionService {
 
-    TransactionResponse moneyDeposit(DepositRequest request);
+    TransactionResponse deposit(DepositRequest request);
 
-    TransactionResponse moneyWithdraw(WithdrawRequest request);
-    List<TransactionHistoryResponse> transactionHistory(String accountNumber);
+    TransactionResponse withdraw(WithdrawRequest request);
+
+    TransactionResponse transfer(TransferRequest request);
+
+    List<TransactionHistoryResponse> getTransactionHistory(String accountNumber);
 }
