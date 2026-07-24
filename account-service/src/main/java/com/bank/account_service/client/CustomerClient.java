@@ -1,28 +1,14 @@
 package com.bank.account_service.client;
 
 import com.bank.account_service.dto.CustomerDto;
-import com.bank.account_service.exception.ResourceNotFoundException;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClient;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
-@Component
-public class CustomerClient {
+@FeignClient(name = "customer-service")
+public interface CustomerClient {
 
-    private final RestClient customerServiceRestClient;
+    @GetMapping("/api/customers/{customerId}")
+    CustomerDto getCustomerById(@PathVariable Long customerId);
 
-    public CustomerClient(RestClient customerServiceRestClient) {
-        this.customerServiceRestClient = customerServiceRestClient;
-    }
-
-    public CustomerDto getCustomerById(Long customerId) {
-        try {
-            return customerServiceRestClient.get()
-                    .uri("/api/customers/{customerId}", customerId)
-                    .retrieve()
-                    .body(CustomerDto.class);
-        } catch (HttpClientErrorException.NotFound ex) {
-            throw new ResourceNotFoundException("Customer not found: " + customerId);
-        }
-    }
 }

@@ -21,6 +21,7 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+
     }
 
     @ExceptionHandler(InsufficientBalanceException.class)
