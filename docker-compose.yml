@@ -1,0 +1,155 @@
+services:
+
+  # ==========================
+  # PostgreSQL Database
+  # ==========================
+  postgres:
+    image: postgres:16
+    container_name: postgres-db
+
+    environment:
+      POSTGRES_DB: banking_db
+      POSTGRES_USER: sneha.satish
+      POSTGRES_PASSWORD: Valtech@2026
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    networks:
+      - banking-network
+
+  # ==========================
+  # Spring Cloud Config Server
+  # ==========================
+  config-server:
+    image: config-server
+    container_name: config-server
+
+    ports:
+      - "8888:8888"
+
+    depends_on:
+      - postgres
+
+    networks:
+      - banking-network
+
+  # ==========================
+  # Eureka Service Registry
+  # ==========================
+  service-registry:
+    image: service-registry
+    container_name: service-registry
+
+    ports:
+      - "8761:8761"
+
+    depends_on:
+      - config-server
+
+    networks:
+      - banking-network
+
+#   ==========================
+#   API Gateway
+#   ==========================
+  api-gateway:
+    image: api-gateway
+    container_name: api-gateway
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      - service-registry
+
+    networks:
+      - banking-network
+#
+#  # ==========================
+#  # Customer Service
+#  # ==========================
+  customer-service:
+    image: customer-service
+    container_name: customer-service
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      - postgres
+      - config-server
+      - service-registry
+
+    networks:
+      - banking-network
+#
+#  # ==========================
+#  # Account Service
+#  # ==========================
+  account-service:
+    image: account-service
+    container_name: account-service
+
+    ports:
+      - "8082:8082"
+
+    depends_on:
+      - postgres
+      - config-server
+      - service-registry
+
+    networks:
+      - banking-network
+#
+#  # ==========================
+#  # Transaction Service
+#  # ==========================
+  transaction-service:
+    image: transaction-service
+    container_name: transaction-service
+
+    ports:
+      - "8083:8083"
+
+    depends_on:
+      - postgres
+      - config-server
+      - service-registry
+
+    networks:
+      - banking-network
+#
+#  # ==========================
+#  # Authentication Service
+#  # ==========================
+  auth-service:
+    image: auth-service
+    container_name: auth-service
+
+    ports:
+      - "8084:8084"
+
+    depends_on:
+      - postgres
+      - config-server
+      - service-registry
+
+    networks:
+      - banking-network
+#
+# ==========================
+# Docker Volumes
+# ==========================
+volumes:
+  postgres-data:
+
+# ==========================
+# Docker Network
+# ==========================
+networks:
+  banking-network:
+    driver: bridge

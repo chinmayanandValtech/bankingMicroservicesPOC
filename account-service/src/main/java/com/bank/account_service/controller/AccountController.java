@@ -56,6 +56,7 @@ public class AccountController {
     @PostMapping("/{accountNumber}/deposit")
     public ResponseEntity<AccountBalanceResponse> deposit(@PathVariable String accountNumber,
                                                             @Valid @RequestBody DepositRequest request) {
+//        throw new RuntimeException("Retry Deposit");
         return ResponseEntity.ok(accountService.deposit(accountNumber, request));
     }
 

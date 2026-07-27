@@ -10,6 +10,8 @@ import com.bank.transaction_service.repository.TransactionRepository;
 import com.bank.transaction_service.service.TransactionService;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -29,6 +31,10 @@ public class TransactionServiceImpl implements TransactionService {
 
 
     @Override
+    @Retry(name = "accountService")
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "depositFallback")
     public TransactionResponse deposit(DepositRequest request) {
 
         AccountBalanceResponse account =
@@ -56,7 +62,25 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+    public TransactionResponse depositFallback(
+            DepositRequest request,
+            Exception ex) {
+
+        return TransactionResponse.builder()
+                .transactionReference("FAILED")
+                .amount(request.getAmount())
+                .status(TransactionStatus.FAILED)
+                .updatedBalance(BigDecimal.ZERO)
+                .build();
+    }
+
+
+
     @Override
+    @Retry(name = "accountService")
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback")
     public TransactionResponse withdraw(WithdrawRequest request) {
         AccountBalanceResponse account =
                 accountClient.withdraw(
@@ -83,7 +107,25 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+    public TransactionResponse withdrawFallback(
+            WithdrawRequest request,
+            Exception ex) {
+
+        return TransactionResponse.builder()
+                .transactionReference("FAILED")
+                .amount(request.getAmount())
+                .status(TransactionStatus.FAILED)
+                .updatedBalance(BigDecimal.ZERO)
+                .build();
+    }
+
+
+
     @Override
+    @Retry(name = "accountService")
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "transferFallback")
     public TransactionResponse transfer(TransferRequest request) {
         TransferResponse account =
                 accountClient.transfer(request);
@@ -109,8 +151,25 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+    public TransactionResponse transferFallback(
+            TransferRequest request,
+            Exception ex) {
+
+        return TransactionResponse.builder()
+                .transactionReference("FAILED")
+                .amount(request.getAmount())
+                .status(TransactionStatus.FAILED)
+                .updatedBalance(BigDecimal.ZERO)
+                .build();
+    }
+
     @Override
-    public List<TransactionHistoryResponse> getTransactionHistory(String accountNumber) {
+    @Retry(name = "accountService")
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "historyFallback")
+    public List<TransactionHistoryResponse> getTransactionHistory(
+            String accountNumber) {
         accountClient.getAccountByAccountNumber(accountNumber);
 
         List<Transaction> transactions =
@@ -128,5 +187,12 @@ public class TransactionServiceImpl implements TransactionService {
                         .transactionTime(transaction.getCreatedAt())
                         .build())
                 .toList();
+    }
+
+    public List<TransactionHistoryResponse> historyFallback(
+            String accountNumber,
+            Exception ex) {
+
+        return List.of();
     }
 }

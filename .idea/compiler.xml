@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="api-gateway" />
         <module name="transaction-service" />
+        <module name="config-server" />
         <module name="account-service" />
         <module name="customer-service" />
         <module name="service-registry" />
@@ -28,6 +29,7 @@
       <module name="account-service" options="-parameters" />
       <module name="api-gateway" options="-parameters" />
       <module name="auth-service" options="-parameters" />
+      <module name="config-server" options="-parameters" />
       <module name="customer-service" options="-parameters" />
       <module name="service-registry" options="-parameters" />
       <module name="transaction-service" options="-parameters" />
