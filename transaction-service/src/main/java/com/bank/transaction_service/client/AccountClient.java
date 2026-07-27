@@ -10,8 +10,10 @@ public class AccountClient {
 
     private final RestClient accountRestClient;
 
-    public AccountClient(RestClient accountRestClient) {
-        this.accountRestClient = accountRestClient;
+    public AccountClient(RestClient.Builder builder) {
+        this.accountRestClient = builder
+                .baseUrl("http://account-service")
+                .build();
     }
 
     public AccountResponse getAccountByAccountNumber(String accountNumber) {

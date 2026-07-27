@@ -1,6 +1,7 @@
 package com.bank.transaction_service.service.impl;
 
 import com.bank.transaction_service.client.AccountClient;
+import com.bank.transaction_service.client.AccountFeignClient;
 import com.bank.transaction_service.dto.*;
 import com.bank.transaction_service.entity.Transaction;
 import com.bank.transaction_service.enums.TransactionStatus;
@@ -8,6 +9,8 @@ import com.bank.transaction_service.enums.TransactionType;
 import com.bank.transaction_service.exception.ResourceNotFoundException;
 import com.bank.transaction_service.repository.TransactionRepository;
 import com.bank.transaction_service.service.TransactionService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -20,19 +23,27 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
 
-    private final AccountClient accountClient;
+    private final AccountFeignClient accountFeignClient;
 
-    public TransactionServiceImpl(TransactionRepository transactionRepository, AccountClient accountClient) {
+    public TransactionServiceImpl(TransactionRepository transactionRepository, AccountClient accountClient, AccountFeignClient accountFeignClient) {
         this.transactionRepository = transactionRepository;
-        this.accountClient = accountClient;
+        this.accountFeignClient = accountFeignClient;
     }
 
 
     @Override
+    @Retry(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
     public TransactionResponse deposit(DepositRequest request) {
 
         AccountBalanceResponse account =
-                accountClient.deposit(
+                accountFeignClient.deposit(
                         request.getAccountNumber(),
                         request);
 
@@ -56,10 +67,28 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+    public TransactionResponse withdrawFallback(
+            WithdrawRequest request,
+            Exception ex) {
+
+        return TransactionResponse.builder()
+                .status(TransactionStatus.FAILED)
+                .amount(request.getAmount())
+                .build();
+    }
     @Override
+    @Retry(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
     public TransactionResponse withdraw(WithdrawRequest request) {
+        System.out.println("Calling Account Service...");
         AccountBalanceResponse account =
-                accountClient.withdraw(
+                accountFeignClient.withdraw(
                         request.getAccountNumber(),
                         request);
 
@@ -83,10 +112,20 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
+
+
     @Override
+    @Retry(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
+    @CircuitBreaker(
+            name = "accountService",
+            fallbackMethod = "withdrawFallback"
+    )
     public TransactionResponse transfer(TransferRequest request) {
         TransferResponse account =
-                accountClient.transfer(request);
+                accountFeignClient.transfer(request);
 
         Transaction transaction = Transaction.builder()
                 .transactionReference(UUID.randomUUID().toString())
@@ -111,7 +150,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     public List<TransactionHistoryResponse> getTransactionHistory(String accountNumber) {
-        accountClient.getAccountByAccountNumber(accountNumber);
+        accountFeignClient.getAccountByAccountNumber(accountNumber);
 
         List<Transaction> transactions =
                 transactionRepository.findAllByAccountNumber(accountNumber);

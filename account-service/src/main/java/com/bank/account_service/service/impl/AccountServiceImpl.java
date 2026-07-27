@@ -1,6 +1,6 @@
 package com.bank.account_service.service.impl;
 
-import com.bank.account_service.client.CustomerClient;
+import com.bank.account_service.client.CustomerFeignClient;
 import com.bank.account_service.dto.AccountBalanceResponse;
 import com.bank.account_service.dto.AccountRequest;
 import com.bank.account_service.dto.AccountResponse;
@@ -25,11 +25,11 @@ import java.util.List;
 public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
-    private final CustomerClient customerClient;
+    private final CustomerFeignClient customerFeignClient;
 
-    public AccountServiceImpl(AccountRepository accountRepository, CustomerClient customerClient) {
+    public AccountServiceImpl(AccountRepository accountRepository, CustomerFeignClient customerFeignClient) {
         this.accountRepository = accountRepository;
-        this.customerClient = customerClient;
+        this.customerFeignClient = customerFeignClient;
     }
 
     private String generateAccountNumber() {
@@ -51,7 +51,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponse createAccount(AccountRequest accountRequest) {
-        CustomerDto customer = customerClient.getCustomerById(accountRequest.getCustomerId());
+        CustomerDto customer = customerFeignClient.getCustomerById(accountRequest.getCustomerId());
 
         Account account = Account.builder()
                 .accountNumber(generateAccountNumber())
@@ -71,7 +71,7 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
 
-        CustomerDto customer = customerClient.getCustomerById(account.getCustomerId());
+        CustomerDto customer = customerFeignClient.getCustomerById(account.getCustomerId());
 
         return toResponse(account, customer);
     }
@@ -84,7 +84,7 @@ public class AccountServiceImpl implements AccountService {
                 .map(account -> {
                     CustomerDto customer;
                     try {
-                        customer = customerClient.getCustomerById(account.getCustomerId());
+                        customer = customerFeignClient.getCustomerById(account.getCustomerId());
                     } catch (ResourceNotFoundException ex) {
                         customer = null;
                     }
@@ -98,7 +98,7 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
 
-        CustomerDto customer = customerClient.getCustomerById(accountRequest.getCustomerId());
+        CustomerDto customer = customerFeignClient.getCustomerById(accountRequest.getCustomerId());
 
         account.setAccountType(accountRequest.getAccountType());
         account.setCustomerId(customer.getCustomerId());

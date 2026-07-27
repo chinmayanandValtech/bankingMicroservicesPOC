@@ -62,6 +62,7 @@ public class AccountController {
     @PostMapping("/{accountNumber}/withdraw")
     public ResponseEntity<AccountBalanceResponse> withdraw(@PathVariable String accountNumber,
                                                              @Valid @RequestBody WithdrawRequest request) {
+//        throw new RuntimeException("Testing Retry");
         return ResponseEntity.ok(accountService.withdraw(accountNumber, request));
     }
 

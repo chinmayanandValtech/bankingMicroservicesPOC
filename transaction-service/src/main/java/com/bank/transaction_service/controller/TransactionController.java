@@ -1,5 +1,6 @@
 package com.bank.transaction_service.controller;
 
+import com.bank.transaction_service.client.AccountFeignClient;
 import com.bank.transaction_service.dto.*;
 import com.bank.transaction_service.service.TransactionService;
 import jakarta.validation.Valid;
@@ -12,11 +13,16 @@ import java.util.List;
 @RequestMapping("api/transactions")
 public class TransactionController {
     private final TransactionService transactionService;
-
-    public TransactionController(TransactionService transactionService) {
+  private final AccountFeignClient accountFeignClient;
+    public TransactionController(TransactionService transactionService, AccountFeignClient accountFeignClient1) {
         this.transactionService = transactionService;
+        this.accountFeignClient = accountFeignClient1;
     }
 
+    @GetMapping("/test")
+    public List<AccountResponse> test() {
+        return accountFeignClient.getAllAccounts();
+    }
    @PostMapping("/deposit")
     private TransactionResponse moneyDeposit(@Valid @RequestBody DepositRequest request){
        return  transactionService.deposit(request);
