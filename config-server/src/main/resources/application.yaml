@@ -10,11 +10,12 @@ spring:
       server:
         git:
           uri: https://github.com/chinmayanandValtech/banking-config-server.git
+          default-label: master
 
 eureka:
   client:
     service-url:
-      defaultZone: http://service-registry:8761/eureka
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
 
 management:
   endpoints:
