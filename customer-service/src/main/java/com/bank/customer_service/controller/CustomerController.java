@@ -1,6 +1,7 @@
 package com.bank.customer_service.controller;
 
 
+import com.bank.customer_service.dto.CustomerLookupRequestDTO;
 import com.bank.customer_service.dto.CustomerRequestDTO;
 import com.bank.customer_service.dto.CustomerResponseDTO;
 
@@ -47,6 +48,21 @@ public class CustomerController {
 
         CustomerResponseDTO response =
                 customerService.getCustomerById(customerId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Unauthenticated service-to-service lookup, used by auth-service during
+     * registration (before a user has any JWT). Not exposed externally -
+     * blocked at the API Gateway.
+     */
+    @PostMapping("/internal")
+    public ResponseEntity<CustomerResponseDTO> getCustomerByIdInternal(
+            @Valid @RequestBody CustomerLookupRequestDTO request) {
+
+        CustomerResponseDTO response =
+                customerService.getCustomerById(request.getCustomerId());
 
         return ResponseEntity.ok(response);
     }
