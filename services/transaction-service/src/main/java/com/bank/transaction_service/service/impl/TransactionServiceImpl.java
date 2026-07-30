@@ -6,7 +6,9 @@ import com.bank.transaction_service.dto.*;
 import com.bank.transaction_service.entity.Transaction;
 import com.bank.transaction_service.enums.TransactionStatus;
 import com.bank.transaction_service.enums.TransactionType;
+import com.bank.transaction_service.event.MoneyTransferredEvent;
 import com.bank.transaction_service.exception.ResourceNotFoundException;
+import com.bank.transaction_service.producer.KafkaProducerService;
 import com.bank.transaction_service.repository.TransactionRepository;
 import com.bank.transaction_service.service.TransactionService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -24,10 +26,12 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionRepository transactionRepository;
 
     private final AccountFeignClient accountFeignClient;
+    private final KafkaProducerService kafkaProducerService;
 
-    public TransactionServiceImpl(TransactionRepository transactionRepository, AccountClient accountClient, AccountFeignClient accountFeignClient) {
+    public TransactionServiceImpl(TransactionRepository transactionRepository, AccountClient accountClient, AccountFeignClient accountFeignClient, KafkaProducerService kafkaProducerService) {
         this.transactionRepository = transactionRepository;
         this.accountFeignClient = accountFeignClient;
+        this.kafkaProducerService = kafkaProducerService;
     }
 
 
@@ -138,6 +142,21 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
 
         transactionRepository.save(transaction);
+
+
+         try {
+             MoneyTransferredEvent event = new MoneyTransferredEvent(
+                     transaction.getTransactionReference(),
+                     transaction.getFromAccountNumber(),
+                     transaction.getToAccountNumber(),
+                     transaction.getAmount(),
+                     transaction.getUpdatedAt()
+             );
+
+             kafkaProducerService.publish(event);
+         } catch (Exception e) {
+             throw new RuntimeException(e);
+         }
 
         return TransactionResponse.builder()
                 .transactionReference(transaction.getTransactionReference())
