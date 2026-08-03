@@ -13,6 +13,12 @@
         <module name="customer-service" />
         <module name="service-registry" />
       </profile>
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.46/a5cfe99fdf320e84955ef653f2ce1bf789d11385/lombok-1.18.46.jar" />
+        </processorPath>
+      </profile>
       <profile name="Annotation profile for auth-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -21,8 +27,13 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
         <module name="auth-service" />
+        <module name="notification-service" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="notification-service.main" target="17" />
+      <module name="notification-service.test" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
@@ -31,6 +42,9 @@
       <module name="auth-service" options="-parameters" />
       <module name="config-server" options="-parameters" />
       <module name="customer-service" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
+      <module name="notification-service.main" options="-parameters" />
+      <module name="notification-service.test" options="-parameters" />
       <module name="service-registry" options="-parameters" />
       <module name="transaction-service" options="-parameters" />
     </option>

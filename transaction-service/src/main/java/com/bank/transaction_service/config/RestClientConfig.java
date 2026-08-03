@@ -10,7 +10,7 @@ public class RestClientConfig {
     @Bean
     public RestClient accountRestClient() {
         return RestClient.builder()
-                .baseUrl("http://localhost:8082")
+                .baseUrl("http://account-service:8082")
                 .build();
     }
 }

@@ -5,30 +5,26 @@ import com.bank.transaction_service.dto.*;
 import com.bank.transaction_service.entity.Transaction;
 import com.bank.transaction_service.enums.TransactionStatus;
 import com.bank.transaction_service.enums.TransactionType;
-import com.bank.transaction_service.exception.ResourceNotFoundException;
+import com.bank.transaction_service.event.MoneyTransferredEvent;
+import com.bank.transaction_service.kafka.KafkaProducer;
 import com.bank.transaction_service.repository.TransactionRepository;
 import com.bank.transaction_service.service.TransactionService;
-import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Service;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
-
     private final AccountClient accountClient;
-
-    public TransactionServiceImpl(TransactionRepository transactionRepository, AccountClient accountClient) {
-        this.transactionRepository = transactionRepository;
-        this.accountClient = accountClient;
-    }
-
+    private final KafkaProducer kafkaProducer;
 
     @Override
     @Retry(name = "accountService")
@@ -37,10 +33,16 @@ public class TransactionServiceImpl implements TransactionService {
             fallbackMethod = "depositFallback")
     public TransactionResponse deposit(DepositRequest request) {
 
-        AccountBalanceResponse account =
-                accountClient.deposit(
-                        request.getAccountNumber(),
-                        request);
+        AccountBalanceResponse account;
+
+        try {
+            account = accountClient.deposit(
+                    request.getAccountNumber(),
+                    request);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw ex;
+        }
 
         Transaction transaction = Transaction.builder()
                 .transactionReference(UUID.randomUUID().toString())
@@ -51,14 +53,14 @@ public class TransactionServiceImpl implements TransactionService {
                 .remarks(request.getRemarks())
                 .build();
 
-        transactionRepository.save(transaction);
+        Transaction savedTransaction = transactionRepository.save(transaction);
 
         return TransactionResponse.builder()
-                .transactionReference(transaction.getTransactionReference())
-                .amount(transaction.getAmount())
+                .transactionReference(savedTransaction.getTransactionReference())
+                .amount(savedTransaction.getAmount())
                 .updatedBalance(account.getBalance())
-                .status(transaction.getStatus())
-                .transactionTime(transaction.getCreatedAt())
+                .status(savedTransaction.getStatus())
+                .transactionTime(savedTransaction.getCreatedAt())
                 .build();
     }
 
@@ -66,15 +68,11 @@ public class TransactionServiceImpl implements TransactionService {
             DepositRequest request,
             Exception ex) {
 
-        return TransactionResponse.builder()
-                .transactionReference("FAILED")
-                .amount(request.getAmount())
-                .status(TransactionStatus.FAILED)
-                .updatedBalance(BigDecimal.ZERO)
-                .build();
+        System.out.println("============== DEPOSIT FAILED ==============");
+        ex.printStackTrace();
+
+        throw new RuntimeException(ex);
     }
-
-
 
     @Override
     @Retry(name = "accountService")
@@ -82,6 +80,7 @@ public class TransactionServiceImpl implements TransactionService {
             name = "accountService",
             fallbackMethod = "withdrawFallback")
     public TransactionResponse withdraw(WithdrawRequest request) {
+
         AccountBalanceResponse account =
                 accountClient.withdraw(
                         request.getAccountNumber(),
@@ -96,14 +95,14 @@ public class TransactionServiceImpl implements TransactionService {
                 .remarks(request.getRemarks())
                 .build();
 
-        transactionRepository.save(transaction);
+        Transaction savedTransaction = transactionRepository.save(transaction);
 
         return TransactionResponse.builder()
-                .transactionReference(transaction.getTransactionReference())
-                .amount(transaction.getAmount())
+                .transactionReference(savedTransaction.getTransactionReference())
+                .amount(savedTransaction.getAmount())
                 .updatedBalance(account.getBalance())
-                .status(transaction.getStatus())
-                .transactionTime(transaction.getCreatedAt())
+                .status(savedTransaction.getStatus())
+                .transactionTime(savedTransaction.getCreatedAt())
                 .build();
     }
 
@@ -119,14 +118,13 @@ public class TransactionServiceImpl implements TransactionService {
                 .build();
     }
 
-
-
     @Override
     @Retry(name = "accountService")
     @CircuitBreaker(
             name = "accountService",
             fallbackMethod = "transferFallback")
     public TransactionResponse transfer(TransferRequest request) {
+
         TransferResponse account =
                 accountClient.transfer(request);
 
@@ -140,14 +138,25 @@ public class TransactionServiceImpl implements TransactionService {
                 .remarks(request.getRemarks())
                 .build();
 
-        transactionRepository.save(transaction);
+        Transaction savedTransaction = transactionRepository.save(transaction);
+
+        // Create Kafka Event
+        MoneyTransferredEvent event = MoneyTransferredEvent.builder()
+                .transactionId(savedTransaction.getId())
+                .fromAccount(savedTransaction.getFromAccountNumber())
+                .toAccount(savedTransaction.getToAccountNumber())
+                .amount(savedTransaction.getAmount())
+                .build();
+
+        // Publish Event to Kafka
+        kafkaProducer.publish(event);
 
         return TransactionResponse.builder()
-                .transactionReference(transaction.getTransactionReference())
-                .amount(transaction.getAmount())
+                .transactionReference(savedTransaction.getTransactionReference())
+                .amount(savedTransaction.getAmount())
                 .updatedBalance(account.getFromAccountBalance())
-                .status(transaction.getStatus())
-                .transactionTime(transaction.getCreatedAt())
+                .status(savedTransaction.getStatus())
+                .transactionTime(savedTransaction.getCreatedAt())
                 .build();
     }
 
@@ -170,6 +179,7 @@ public class TransactionServiceImpl implements TransactionService {
             fallbackMethod = "historyFallback")
     public List<TransactionHistoryResponse> getTransactionHistory(
             String accountNumber) {
+
         accountClient.getAccountByAccountNumber(accountNumber);
 
         List<Transaction> transactions =

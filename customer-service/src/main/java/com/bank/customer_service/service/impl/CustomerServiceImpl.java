@@ -1,6 +1,5 @@
 package com.bank.customer_service.service.impl;
 
-
 import com.bank.customer_service.dto.CustomerRequestDTO;
 import com.bank.customer_service.dto.CustomerResponseDTO;
 import com.bank.customer_service.entity.Customer;
@@ -8,31 +7,26 @@ import com.bank.customer_service.exception.CustomerAlreadyExistsException;
 import com.bank.customer_service.exception.ResourceNotFoundException;
 import com.bank.customer_service.repository.CustomerRepository;
 import com.bank.customer_service.service.CustomerService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-//This class contains business logic.
-//Without this annotation, Spring won't create this object automatically.
 @Service
 public class CustomerServiceImpl implements CustomerService {
 
-
-//    This class needs Repository to talk to Database.
     private final CustomerRepository customerRepository;
 
-//    Spring automatically gives Repository to Service.
-//    This is called
-//    Dependency Injection
     public CustomerServiceImpl(CustomerRepository customerRepository) {
         this.customerRepository = customerRepository;
     }
 
     @Override
     public CustomerResponseDTO createCustomer(CustomerRequestDTO requestDTO) {
-
 
         if (customerRepository.findByEmail(requestDTO.getEmail()).isPresent()) {
             throw new CustomerAlreadyExistsException("Email already exists");
@@ -45,9 +39,7 @@ public class CustomerServiceImpl implements CustomerService {
         if (customerRepository.findByPanNumber(requestDTO.getPanNumber()).isPresent()) {
             throw new CustomerAlreadyExistsException("PAN number already exists");
         }
-//        Create an empty Customer object.
-//                Think like
-//        Blank Customer Form
+
         Customer customer = Customer.builder()
                 .firstName(requestDTO.getFirstName())
                 .lastName(requestDTO.getLastName())
@@ -93,7 +85,10 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Cacheable(value = "customers", key = "#customerId")
     public CustomerResponseDTO getCustomerById(Long customerId) {
+
+        System.out.println("Fetching customer from PostgreSQL...");
 
         Optional<Customer> optionalCustomer =
                 customerRepository.findById(customerId);
@@ -115,6 +110,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CachePut(value = "customers", key = "#customerId")
     public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
 
         Customer customer = customerRepository.findById(customerId)
@@ -143,12 +139,12 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @CacheEvict(value = "customers", key = "#customerId")
     public void deleteCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
         customerRepository.delete(customer);
-
     }
 }
