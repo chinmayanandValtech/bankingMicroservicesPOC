@@ -253,6 +253,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-docker}
       CONFIG_SERVER_URL: http://config-server:8888
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
 
     depends_on:
       postgres:
