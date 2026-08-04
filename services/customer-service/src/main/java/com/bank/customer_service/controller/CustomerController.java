@@ -67,6 +67,16 @@ public class CustomerController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/internal/email/{email}")
+    public ResponseEntity<CustomerResponseDTO> getCustomerByEmail(
+            @PathVariable String email) {
+
+        CustomerResponseDTO response =
+                customerService.getCustomerByEmail(email);
+
+        return ResponseEntity.ok(response);
+    }
+
     @PutMapping("/{customerId}")
     public ResponseEntity<CustomerResponseDTO> updateCustomer(
             @PathVariable Long customerId,

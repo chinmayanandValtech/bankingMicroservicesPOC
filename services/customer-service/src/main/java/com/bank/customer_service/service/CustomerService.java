@@ -18,6 +18,8 @@ public interface CustomerService {
     // FIND CUSTOMER BY ID
     CustomerResponseDTO getCustomerById(Long customerId);
 
+    CustomerResponseDTO getCustomerByEmail(String email);
+
     //UPDATE CUSTOMER
     CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO);
 

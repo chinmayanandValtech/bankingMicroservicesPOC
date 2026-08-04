@@ -15,6 +15,11 @@ import com.bank.account_service.exception.InsufficientBalanceException;
 import com.bank.account_service.exception.ResourceNotFoundException;
 import com.bank.account_service.repository.AccountRepository;
 import com.bank.account_service.service.AccountService;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,11 +31,36 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final CustomerFeignClient customerFeignClient;
-
-    public AccountServiceImpl(AccountRepository accountRepository, CustomerFeignClient customerFeignClient) {
+    private final CacheManager cacheManager;
+    public AccountServiceImpl(AccountRepository accountRepository, CustomerFeignClient customerFeignClient, CacheManager cacheManager) {
         this.accountRepository = accountRepository;
         this.customerFeignClient = customerFeignClient;
+        this.cacheManager = cacheManager;
     }
+
+    private void updateAccountCache(Account account) {
+        Cache cache = cacheManager.getCache("accounts");
+
+        if (cache == null) {
+            return;
+        }
+
+        CustomerDto customer = customerFeignClient.getCustomerById(account.getCustomerId());
+
+        AccountResponse response = toResponse(account, customer);
+
+        cache.put(account.getAccountNumber(), response);
+    }
+
+    private void evictAccountCache(String accountNumber) {
+        Cache cache = cacheManager.getCache("accounts");
+
+        if (cache != null) {
+            cache.evict(accountNumber);
+        }
+    }
+
+
 
     private String generateAccountNumber() {
         return String.valueOf(System.currentTimeMillis());
@@ -67,7 +97,9 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Cacheable(value = "accounts", key = "#accountNumber")
     public AccountResponse getAccountById(String accountNumber) {
+        System.out.println("Fetching from PostgreSQL...");
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
 
@@ -104,7 +136,7 @@ public class AccountServiceImpl implements AccountService {
         account.setCustomerId(customer.getCustomerId());
 
         Account updatedAccount = accountRepository.save(account);
-
+        updateAccountCache(updatedAccount);
         return toResponse(updatedAccount, customer);
     }
 
@@ -113,6 +145,7 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
 
+        evictAccountCache(account.getAccountNumber());
         accountRepository.delete(account);
     }
 
@@ -124,7 +157,7 @@ public class AccountServiceImpl implements AccountService {
 
         account.setBalance(account.getBalance().add(request.getAmount()));
         Account savedAccount = accountRepository.save(account);
-
+        updateAccountCache(savedAccount);
         return AccountBalanceResponse.builder()
                 .accountNumber(savedAccount.getAccountNumber())
                 .balance(savedAccount.getBalance())
@@ -133,6 +166,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+
     @Transactional
     public AccountBalanceResponse withdraw(String accountNumber, WithdrawRequest request) {
         Account account = accountRepository.findByAccountNumber(accountNumber)
@@ -144,7 +178,7 @@ public class AccountServiceImpl implements AccountService {
 
         account.setBalance(account.getBalance().subtract(request.getAmount()));
         Account savedAccount = accountRepository.save(account);
-
+        updateAccountCache(savedAccount);
         return AccountBalanceResponse.builder()
                 .accountNumber(savedAccount.getAccountNumber())
                 .balance(savedAccount.getBalance())
@@ -153,7 +187,6 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    @Transactional
     public TransferResponse transfer(TransferRequest request) {
         if (request.getFromAccountNumber().equals(request.getToAccountNumber())) {
             throw new IllegalArgumentException("Source and destination account cannot be the same.");
@@ -175,7 +208,9 @@ public class AccountServiceImpl implements AccountService {
         toAccount.setBalance(updatedToBalance);
 
         Account savedFromAccount = accountRepository.save(fromAccount);
+        updateAccountCache(savedFromAccount);
         Account savedToAccount = accountRepository.save(toAccount);
+        updateAccountCache(savedToAccount);
 
         return TransferResponse.builder()
                 .fromAccountNumber(savedFromAccount.getAccountNumber())

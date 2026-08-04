@@ -1,4 +1,60 @@
 package com.bank.account_service.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+
+import java.time.Duration;
+
+@Configuration
+@EnableCaching
 public class RedisConfig {
+
+    @Bean
+    public RedisCacheManager cacheManager(
+            RedisConnectionFactory connectionFactory,
+            ObjectMapper objectMapper
+    ) {
+
+        ObjectMapper mapper = objectMapper.copy();
+
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // Without this, Jackson doesn't embed a type hint in the JSON it writes
+        // to Redis, so on read-back it can't tell what class to deserialize into
+        // and falls back to a plain LinkedHashMap.
+        mapper.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder().allowIfSubType(Object.class).build(),
+                ObjectMapper.DefaultTyping.NON_FINAL
+        );
+
+        GenericJackson2JsonRedisSerializer serializer =
+                new GenericJackson2JsonRedisSerializer(mapper);
+
+        RedisCacheConfiguration configuration =
+                RedisCacheConfiguration.defaultCacheConfig()
+                        .entryTtl(Duration.ofMinutes(5))
+                        .disableCachingNullValues()
+                        .serializeValuesWith(
+                                RedisSerializationContext.SerializationPair.fromSerializer(serializer)
+                        );
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(configuration)
+                .build();
+    }
+
+
+
+
 }

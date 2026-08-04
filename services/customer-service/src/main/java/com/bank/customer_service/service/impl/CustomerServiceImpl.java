@@ -115,6 +115,27 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    public CustomerResponseDTO getCustomerByEmail(String email) {
+        Optional<Customer> optionalCustomer =
+                customerRepository.findByEmail(email);
+
+        Customer customer = optionalCustomer.orElseThrow(
+                () -> new ResourceNotFoundException("Customer not found")
+        );
+
+        return CustomerResponseDTO.builder()
+                .customerId(customer.getCustomerId())
+                .firstName(customer.getFirstName())
+                .lastName(customer.getLastName())
+                .email(customer.getEmail())
+                .phoneNumber(customer.getPhoneNumber())
+                .address(customer.getAddress())
+                .dateOfBirth(customer.getDateOfBirth())
+                .createdAt(customer.getCreatedAt())
+                .build();
+    }
+
+    @Override
     public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
 
         Customer customer = customerRepository.findById(customerId)

@@ -1,4 +1,9 @@
 package com.bank.auth_service.service;
 
-public class EmailService {
+import org.springframework.stereotype.Service;
+
+public interface EmailService {
+
+    void sendOtp(String to, String otp);
+
 }

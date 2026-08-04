@@ -37,5 +37,19 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      - redis_data:/data
+
 volumes:
   kafka-data:
+  redis_data:
