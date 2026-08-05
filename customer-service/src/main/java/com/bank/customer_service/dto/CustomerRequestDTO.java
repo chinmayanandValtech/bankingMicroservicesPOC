@@ -34,6 +34,9 @@ public class CustomerRequestDTO {
     @NotBlank(message = "PAN Number is required")
     private String panNumber;
 
+    @NotBlank(message = "Password is required")
+    private String password;
+
     private String address;
 
     private LocalDate dateOfBirth;

@@ -1,14 +1,18 @@
 package com.bank.customer_service.service.impl;
 
 
+import com.bank.customer_service.client.KeycloakClient;
 import com.bank.customer_service.dto.CustomerRequestDTO;
 import com.bank.customer_service.dto.CustomerResponseDTO;
 import com.bank.customer_service.entity.Customer;
 import com.bank.customer_service.exception.CustomerAlreadyExistsException;
+import com.bank.customer_service.exception.ForbiddenException;
 import com.bank.customer_service.exception.ResourceNotFoundException;
 import com.bank.customer_service.repository.CustomerRepository;
+import com.bank.customer_service.security.CurrentUser;
 import com.bank.customer_service.service.CustomerService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,17 +26,43 @@ public class CustomerServiceImpl implements CustomerService {
 
 //    This class needs Repository to talk to Database.
     private final CustomerRepository customerRepository;
+    private final KeycloakClient keycloakClient;
+    private final CurrentUser currentUser;
 
 //    Spring automatically gives Repository to Service.
 //    This is called
 //    Dependency Injection
-    public CustomerServiceImpl(CustomerRepository customerRepository) {
+    public CustomerServiceImpl(CustomerRepository customerRepository,
+                                KeycloakClient keycloakClient,
+                                CurrentUser currentUser) {
         this.customerRepository = customerRepository;
+        this.keycloakClient = keycloakClient;
+        this.currentUser = currentUser;
+    }
+
+    /** Only bank staff may perform this operation. */
+    private void assertAdmin(String action) {
+        if (!currentUser.isAdmin()) {
+            throw new ForbiddenException("Only bank staff can " + action);
+        }
+    }
+
+    /** Admins may act on any customer; a customer may only act on themselves. */
+    private void assertCanAccess(Long customerId) {
+        if (currentUser.isAdmin()) {
+            return;
+        }
+        Long callerId = currentUser.getCustomerId();
+        if (callerId == null || !callerId.equals(customerId)) {
+            throw new ForbiddenException("You can only access your own customer record");
+        }
     }
 
     @Override
+    @Transactional
     public CustomerResponseDTO createCustomer(CustomerRequestDTO requestDTO) {
 
+        assertAdmin("onboard new customers");
 
         if (customerRepository.findByEmail(requestDTO.getEmail()).isPresent()) {
             throw new CustomerAlreadyExistsException("Email already exists");
@@ -61,6 +91,14 @@ public class CustomerServiceImpl implements CustomerService {
 
         Customer savedCustomer = customerRepository.save(customer);
 
+        keycloakClient.createCustomerUser(
+                savedCustomer.getEmail(),
+                savedCustomer.getFirstName(),
+                savedCustomer.getLastName(),
+                requestDTO.getPassword(),
+                savedCustomer.getCustomerId()
+        );
+
         return CustomerResponseDTO.builder()
                 .customerId(savedCustomer.getCustomerId())
                 .firstName(savedCustomer.getFirstName())
@@ -76,7 +114,16 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public List<CustomerResponseDTO> getAllCustomers() {
 
-        List<Customer> customers = customerRepository.findAll();
+        // Admins see every customer; a customer sees only their own record.
+        List<Customer> customers;
+        if (currentUser.isAdmin()) {
+            customers = customerRepository.findAll();
+        } else {
+            Long callerId = currentUser.getCustomerId();
+            customers = callerId == null
+                    ? List.of()
+                    : customerRepository.findById(callerId).map(List::of).orElse(List.of());
+        }
 
         return customers.stream()
                 .map(customer -> CustomerResponseDTO.builder()
@@ -94,6 +141,8 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerResponseDTO getCustomerById(Long customerId) {
+
+        assertCanAccess(customerId);
 
         Optional<Customer> optionalCustomer =
                 customerRepository.findById(customerId);
@@ -116,6 +165,8 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
+
+        assertCanAccess(customerId);
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
@@ -144,6 +195,8 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public void deleteCustomer(Long customerId) {
+
+        assertAdmin("delete customers");
 
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));

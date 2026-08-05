@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      # host 5433 -> avoids clashing with your local Postgres already on 5432
+      - "5433:5432"
+
+  eureka-server:
+    build: ./eureka-server
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8761:8761"
+
+  customer-service:
+    build: ./customer-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - postgres
+      - eureka-server
+    ports:
+      - "8081:8081"
+
+  account-service:
+    build: ./account-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - postgres
+      - eureka-server
+      - customer-service
+    ports:
+      - "8082:8082"
+
+  transaction-service:
+    build: ./transaction-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      - postgres
+      - eureka-server
+      - account-service
+    ports:
+      - "8083:8083"
+
+  api-gateway:
+    build: ./api-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - eureka-server
+      - account-service
+      - customer-service
+      - transaction-service
+    ports:
+      - "9090:9090"
+
+volumes:
+  postgres-data:

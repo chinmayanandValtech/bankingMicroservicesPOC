@@ -11,9 +11,12 @@ import com.bank.account_service.dto.TransferResponse;
 import com.bank.account_service.dto.WithdrawRequest;
 import com.bank.account_service.entity.Account;
 import com.bank.account_service.enums.AccountStatus;
+import com.bank.account_service.exception.ForbiddenException;
 import com.bank.account_service.exception.InsufficientBalanceException;
 import com.bank.account_service.exception.ResourceNotFoundException;
+import com.bank.account_service.exception.ServiceUnavailableException;
 import com.bank.account_service.repository.AccountRepository;
+import com.bank.account_service.security.CurrentUser;
 import com.bank.account_service.service.AccountService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +29,43 @@ public class AccountServiceImpl implements AccountService {
 
     private final AccountRepository accountRepository;
     private final CustomerClient customerClient;
+    private final CurrentUser currentUser;
 
-    public AccountServiceImpl(AccountRepository accountRepository, CustomerClient customerClient) {
+    public AccountServiceImpl(AccountRepository accountRepository,
+                               CustomerClient customerClient,
+                               CurrentUser currentUser) {
         this.accountRepository = accountRepository;
         this.customerClient = customerClient;
+        this.currentUser = currentUser;
     }
 
     private String generateAccountNumber() {
         return String.valueOf(System.currentTimeMillis());
+    }
+
+    /**
+     * Admins may act on any account. A customer may only act on accounts they
+     * own. Deliberately reports "not found" rather than "forbidden" so a
+     * customer cannot probe which account numbers exist on other customers.
+     */
+    private void assertCanAccess(Account account) {
+        if (currentUser.isAdmin()) {
+            return;
+        }
+        Long callerId = currentUser.getCustomerId();
+        if (callerId == null || !callerId.equals(account.getCustomerId())) {
+            throw new ResourceNotFoundException("Account not found: " + account.getAccountNumber());
+        }
+    }
+
+    private void assertCanActForCustomer(Long customerId) {
+        if (currentUser.isAdmin()) {
+            return;
+        }
+        Long callerId = currentUser.getCustomerId();
+        if (callerId == null || !callerId.equals(customerId)) {
+            throw new ForbiddenException("You can only manage your own accounts");
+        }
     }
 
     private AccountResponse toResponse(Account account, CustomerDto customer) {
@@ -51,6 +83,8 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountResponse createAccount(AccountRequest accountRequest) {
+        assertCanActForCustomer(accountRequest.getCustomerId());
+
         CustomerDto customer = customerClient.getCustomerById(accountRequest.getCustomerId());
 
         Account account = Account.builder()
@@ -70,6 +104,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponse getAccountById(String accountNumber) {
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
+        assertCanAccess(account);
 
         CustomerDto customer = customerClient.getCustomerById(account.getCustomerId());
 
@@ -78,14 +113,21 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public List<AccountResponse> getAllAccounts() {
-        List<Account> accounts = accountRepository.findAll();
+        // Admins see every account; a customer sees only their own.
+        List<Account> accounts;
+        if (currentUser.isAdmin()) {
+            accounts = accountRepository.findAll();
+        } else {
+            Long callerId = currentUser.getCustomerId();
+            accounts = callerId == null ? List.of() : accountRepository.findByCustomerId(callerId);
+        }
 
         return accounts.stream()
                 .map(account -> {
                     CustomerDto customer;
                     try {
                         customer = customerClient.getCustomerById(account.getCustomerId());
-                    } catch (ResourceNotFoundException ex) {
+                    } catch (ResourceNotFoundException | ServiceUnavailableException ex) {
                         customer = null;
                     }
                     return toResponse(account, customer);
@@ -97,6 +139,9 @@ public class AccountServiceImpl implements AccountService {
     public AccountResponse updateAccount(Long id, AccountRequest accountRequest) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
+        assertCanAccess(account);
+        // also stops a customer from re-assigning their account to someone else
+        assertCanActForCustomer(accountRequest.getCustomerId());
 
         CustomerDto customer = customerClient.getCustomerById(accountRequest.getCustomerId());
 
@@ -112,6 +157,7 @@ public class AccountServiceImpl implements AccountService {
     public void deleteAccount(Long id) {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + id));
+        assertCanAccess(account);
 
         accountRepository.delete(account);
     }
@@ -121,6 +167,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountBalanceResponse deposit(String accountNumber, DepositRequest request) {
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
+        assertCanAccess(account);
 
         account.setBalance(account.getBalance().add(request.getAmount()));
         Account savedAccount = accountRepository.save(account);
@@ -137,6 +184,7 @@ public class AccountServiceImpl implements AccountService {
     public AccountBalanceResponse withdraw(String accountNumber, WithdrawRequest request) {
         Account account = accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountNumber));
+        assertCanAccess(account);
 
         if (account.getBalance().compareTo(request.getAmount()) < 0) {
             throw new InsufficientBalanceException("Insufficient balance in account: " + accountNumber);
@@ -161,6 +209,10 @@ public class AccountServiceImpl implements AccountService {
 
         Account fromAccount = accountRepository.findByAccountNumber(request.getFromAccountNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("From account not found: " + request.getFromAccountNumber()));
+        // Only the source account must be owned by the caller — you are allowed
+        // to transfer money *to* anybody, but only *from* your own account.
+        assertCanAccess(fromAccount);
+
         Account toAccount = accountRepository.findByAccountNumber(request.getToAccountNumber())
                 .orElseThrow(() -> new ResourceNotFoundException("To account not found: " + request.getToAccountNumber()));
 
