@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: transaction-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: transaction-service
+
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+
+    spec:
+      containers:
+        - name: transaction-service
+
+          image: chinmayanand5613/transaction-service:1.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8083
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+
+            - name: CONFIG_SERVER_URL
+              value: http://config-server:8888
+
+            - name: EUREKA_URL
+              value: http://service-registry:8761/eureka
+
+            - name: ZIPKIN_ENDPOINT
+              value: http://zipkin:9411/api/v2/spans
