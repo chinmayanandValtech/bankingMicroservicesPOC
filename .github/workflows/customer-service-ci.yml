@@ -3,7 +3,7 @@ name: Customer Service CI
 on:
   push:
     branches:
-      - main
+      - eureka_try_sneha
 
 jobs:
   test:
