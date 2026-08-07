@@ -4,14 +4,25 @@ on:
   push:
     branches:
       - chinmay_prod
-
+    paths:
+      - 'services/account-service/**'
 
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: services/account-service
+
     steps:
-      - name: Print Message
-        run: echo "Account Service Pipeline Started Successfully!"
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Show Current Directory
+        run: pwd
+
+      - name: List Files
+        run: ls -la
