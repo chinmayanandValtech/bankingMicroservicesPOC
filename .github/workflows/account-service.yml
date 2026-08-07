@@ -10,8 +10,12 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
+    name: Build Account Service
     runs-on: ubuntu-latest
 
     defaults:
@@ -28,25 +32,35 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+
       - name: Build with Maven
         run: ./mvnw clean package -DskipTests
 
-      - name: Verify Java
-        run: |
-          java -version
-          mvn -version
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-service-jar
+          path: services/account-service/target/*.jar
+          retention-days: 7
 
-      - name: Verify Docker
-        run: docker --version
+  docker:
+    name: Build & Push Docker Image
+    needs: build
+    runs-on: ubuntu-latest
 
-      - name: Build Docker Image
-        run: |
-          docker build \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ github.sha }} \
-            .
-      - name: List Docker Images
-        run: docker images
+    defaults:
+      run:
+        working-directory: services/account-service
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download JAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: account-service-jar
+          path: services/account-service/target
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -54,8 +68,22 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push Latest Image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest
+      - name: Set Image Tag
+        id: vars
+        run: |
+          echo "TAG=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
-      - name: Push Commit Image
-        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ github.sha }}
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.vars.outputs.TAG }} \
+            .
+
+      - name: Push Latest Image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest
+
+      - name: Push Version Image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.vars.outputs.TAG }}
