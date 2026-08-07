@@ -6,6 +6,7 @@ on:
       - chinmay_prod
     paths:
       - 'services/account-service/**'
+      - '.github/workflows/account-service.yml'
 
   workflow_dispatch:
 
@@ -27,8 +28,12 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      - name: Build with Maven
+        run: ./mvnw clean package
 
       - name: Verify Java
         run: |
           java -version
           mvn -version
+
+     
