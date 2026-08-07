@@ -36,4 +36,12 @@ jobs:
           java -version
           mvn -version
 
+      - name: Verify Docker
+        run: docker --version
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t account-service:test \
+            .  
      
