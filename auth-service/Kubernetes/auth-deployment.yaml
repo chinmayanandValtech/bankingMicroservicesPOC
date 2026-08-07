@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: snehasatish/auth-service:v5
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8084
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: EUREKA_INSTANCE_HOSTNAME
+              value: "$(POD_IP)"
+            - name: EUREKA_INSTANCE_IP_ADDRESS
+              value: "$(POD_IP)"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: DB_URL
+              value: "jdbc:postgresql://postgres-service:5432/auth_db"
+            - name: DB_USERNAME
+              value: "sneha.satish"
+            - name: DB_PASSWORD
+              value: "Valtech@2026"
+            - name: EUREKA_URL
+              value: "http://service-registry:8761/eureka"
+            - name: JWT_SECRET
+              value: "ThisIsMySecretKeyForJwtAuthenticationInBankingApplication9844442726"
+            - name: JWT_EXPIRATION
+              value: "86400000"
+            - name: SPRING_MAIL_HOST
+              value: "smtp.gmail.com"
+            - name: SPRING_MAIL_PORT
+              value: "587"
+            - name: SPRING_MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-mail-secret
+                  key: MAIL_USERNAME
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-mail-secret
+                  key: MAIL_PASSWORD
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis"
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+            - name: SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH
+              value: "true"
+            - name: SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE
+              value: "true"

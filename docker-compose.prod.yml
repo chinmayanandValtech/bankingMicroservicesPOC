@@ -1,0 +1,33 @@
+services:
+
+  customer-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  account-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  transaction-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  auth-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  api-gateway:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  notification-service:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  config-server:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+  service-registry:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod

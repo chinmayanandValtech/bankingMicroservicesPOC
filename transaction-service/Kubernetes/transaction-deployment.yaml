@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-service
+  template:
+    metadata:
+      labels:
+        app: transaction-service
+    spec:
+      containers:
+        - name: transaction-service
+          image: snehasatish/transaction-service:v2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: DB_URL
+              value: "jdbc:postgresql://postgres-service:5432/transaction_db"
+            - name: DB_USERNAME
+              value: "sneha.satish"
+            - name: DB_PASSWORD
+              value: "Valtech@2026"
+            - name: EUREKA_URL
+              value: "http://service-registry:8761/eureka"

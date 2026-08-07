@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: customer-service
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: customer-service
+
+  template:
+    metadata:
+      labels:
+        app: customer-service
+
+    spec:
+      containers:
+        - name: customer-service
+          image: snehasatish/customer-service:v6
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8081
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+
+            - name: CONFIG_SERVER_URL
+              value: "http://config-server:8888"
+
+            - name: EUREKA_URL
+              value: "http://service-registry:8761/eureka"
+
+            - name: DB_URL
+              value: "jdbc:postgresql://postgres-service:5432/customer_db"
+
+            - name: DB_USERNAME
+              value: "sneha.satish"
+
+            - name: DB_PASSWORD
+              value: "Valtech@2026"
+
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis"
+
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"

@@ -7,9 +7,6 @@ import com.bank.customer_service.exception.CustomerAlreadyExistsException;
 import com.bank.customer_service.exception.ResourceNotFoundException;
 import com.bank.customer_service.repository.CustomerRepository;
 import com.bank.customer_service.service.CustomerService;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -85,17 +82,13 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    @Cacheable(value = "customers", key = "#customerId")
     public CustomerResponseDTO getCustomerById(Long customerId) {
 
-        System.out.println("Fetching customer from PostgreSQL...");
+        System.out.println("******** NEW CODE EXECUTED ********");
 
-        Optional<Customer> optionalCustomer =
-                customerRepository.findById(customerId);
-
-        Customer customer = optionalCustomer.orElseThrow(
-                () -> new ResourceNotFoundException("Customer not found")
-        );
+        Customer customer = customerRepository.findById(customerId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Customer not found"));
 
         return CustomerResponseDTO.builder()
                 .customerId(customer.getCustomerId())
@@ -110,7 +103,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    @CachePut(value = "customers", key = "#customerId")
+//    @CachePut(value = "customers", key = "#customerId")
     public CustomerResponseDTO updateCustomer(Long customerId, CustomerRequestDTO requestDTO) {
 
         Customer customer = customerRepository.findById(customerId)
@@ -139,7 +132,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    @CacheEvict(value = "customers", key = "#customerId")
+//    @CacheEvict(value = "customers", key = "#customerId")
     public void deleteCustomer(Long customerId) {
 
         Customer customer = customerRepository.findById(customerId)

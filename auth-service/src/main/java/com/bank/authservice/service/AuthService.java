@@ -13,4 +13,6 @@ public interface AuthService {
 
     AuthResponse verifyOtp(VerifyOtpRequest request);
 
+    String resendOtp(String email);
+
 }

@@ -43,7 +43,10 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/auth/register",
-                                "/api/auth/login"
+                                "/api/auth/login",
+                                "/api/auth/verify-otp",
+                                "/actuator/**"
+//                                "/actuator/prometheus"
                         ).permitAll()
 
                         .anyRequest().authenticated()

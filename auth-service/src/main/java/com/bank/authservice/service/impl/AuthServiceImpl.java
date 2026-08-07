@@ -7,6 +7,7 @@ import com.bank.authservice.dto.VerifyOtpRequest;
 import com.bank.authservice.entity.User;
 import com.bank.authservice.repository.UserRepository;
 import com.bank.authservice.service.AuthService;
+import com.bank.authservice.service.EmailService;
 import com.bank.authservice.service.JwtService;
 import com.bank.authservice.service.OtpService;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final OtpService otpService;
+    private final EmailService emailService;
 
     @Override
     public String register(RegisterRequest request) {
@@ -34,7 +36,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        return "User Registered Successfully";
+        return "User registered successfully";
     }
 
     @Override
@@ -55,7 +57,9 @@ public class AuthServiceImpl implements AuthService {
 
         otpService.saveOtp(user.getEmail(), otp);
 
-        System.out.println("OTP = " + otp);
+        System.out.println("Generated OTP = " + otp);
+
+        emailService.sendOtpEmail(user.getEmail(), otp);
 
         return AuthResponse.builder()
                 .token("OTP sent successfully")
@@ -65,10 +69,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse verifyOtp(VerifyOtpRequest request) {
 
+        System.out.println("Verify OTP API called");
+
         boolean valid = otpService.verifyOtp(
                 request.getEmail(),
                 request.getOtp()
         );
+
+        System.out.println("OTP valid = " + valid);
 
         if (!valid) {
             throw new RuntimeException("Invalid OTP");
@@ -86,8 +94,17 @@ public class AuthServiceImpl implements AuthService {
                 .token(token)
                 .build();
     }
+
+    @Override
+    public String resendOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(
+                        () -> new RuntimeException(
+                                "User not found"));
+        String otp = otpService.generateOtp();
+        otpService.saveOtp(email,otp);
+        emailService.sendOtpEmail(email,otp);
+        return "OTP resent successfully";
+    }
+
 }
-
-
-
-//eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJTaHJleWEiLCJpYXQiOjE3ODQ4NzIwMzIsImV4cCI6MTc4NDg3NTYzMn0.jaonFqJQZ5MefE1rrTPRFn3XH_Nt3k9OVrh9jpaTS-k
