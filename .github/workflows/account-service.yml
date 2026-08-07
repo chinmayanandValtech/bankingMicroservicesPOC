@@ -44,4 +44,5 @@ jobs:
           docker build \
             -t account-service:test \
             .  
-     
+      - name: List Docker Images
+        run: docker images
