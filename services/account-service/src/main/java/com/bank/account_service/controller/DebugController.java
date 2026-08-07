@@ -11,6 +11,7 @@ public class DebugController {
 
     @Value("${HOSTNAME:unknown}")
     private String hostname;
+
     @GetMapping("/pod")
     public String pod() {
         return hostname;
