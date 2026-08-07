@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - chinmay_prod
-    paths:
-      - 'services/account-service/**'
+
 
   workflow_dispatch:
 
