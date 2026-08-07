@@ -1,4 +1,4 @@
-name: Account Service CI
+name: Account Service CI/CD
 
 on:
   push:
@@ -14,6 +14,7 @@ permissions:
   contents: read
 
 jobs:
+
   build:
     name: Build Account Service
     runs-on: ubuntu-latest
@@ -23,7 +24,7 @@ jobs:
         working-directory: services/account-service
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Source
         uses: actions/checkout@v4
 
       - name: Setup Java 17
@@ -36,7 +37,7 @@ jobs:
       - name: Build with Maven
         run: ./mvnw clean package -DskipTests
 
-      - name: Upload JAR Artifact
+      - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
           name: account-service-jar
@@ -48,28 +49,32 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 
+    outputs:
+      image_tag: ${{ steps.tag.outputs.TAG }}
+
     defaults:
       run:
         working-directory: services/account-service
 
     steps:
-      - name: Checkout Repository
+
+      - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Download JAR Artifact
+      - name: Download JAR
         uses: actions/download-artifact@v4
         with:
           name: account-service-jar
           path: services/account-service/target
 
-      - name: Login to Docker Hub
+      - name: Login Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set Image Tag
-        id: vars
+      - name: Generate Image Tag
+        id: tag
         run: |
           echo "TAG=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
@@ -77,13 +82,56 @@ jobs:
         run: |
           docker build \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.vars.outputs.TAG }} \
+            -t ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.tag.outputs.TAG }} \
             .
 
-      - name: Push Latest Image
+      - name: Push Latest
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:latest
 
-      - name: Push Version Image
+      - name: Push SHA Tag
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.vars.outputs.TAG }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ steps.tag.outputs.TAG }}
+
+  gitops:
+    name: Update GitOps Repository
+    needs: docker
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Banking-Kubernetes
+        uses: actions/checkout@v4
+        with:
+          repository: chinmayanandValtech/Banking-Kubernetes
+          token: ${{ secrets.GH_PAT }}
+          path: banking-kubernetes
+
+      - name: Install yq
+        uses: mikefarah/yq@v4.44.3
+
+      - name: Update Deployment Image
+        run: |
+          yq -i '
+          .spec.template.spec.containers[0].image =
+          "${{ secrets.DOCKERHUB_USERNAME }}/account-service:${{ needs.docker.outputs.image_tag }}"
+          ' banking-kubernetes/account-service/deployment.yaml
+
+      - name: Configure Git
+        run: |
+          cd banking-kubernetes
+
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Commit Changes
+        run: |
+          cd banking-kubernetes
+
+          git add .
+
+          git diff --cached --quiet && echo "No changes" && exit 0
+
+          git commit -m "Deploy account-service:${{ needs.docker.outputs.image_tag }}"
+
+          git push
