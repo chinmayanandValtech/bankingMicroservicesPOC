@@ -6,7 +6,7 @@ on:
       - eureka_try_sneha
 
 jobs:
-  test:
+  build:
 
     runs-on: ubuntu-latest
 
@@ -15,5 +15,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Print message
-        run: echo "Hello Sneha! Your first CI pipeline is running."
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build customer-service
+        run: |
+          cd customer-service
+          mvn clean package
