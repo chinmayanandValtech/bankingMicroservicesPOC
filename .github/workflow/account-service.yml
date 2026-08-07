@@ -1,0 +1,19 @@
+name: Account Service CI
+
+on:
+  push:
+    branches:
+      - chinmay_prod
+
+    paths:
+      - 'services/account-service/**'
+
+workflow_dispatch:
+
+  jobs:
+    test:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Print Message
+          run: echo "Account Service Pipeline Started Successfully!"
