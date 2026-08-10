@@ -115,7 +115,7 @@ jobs:
           yq -i '
           .spec.template.spec.containers[0].image =
           "${{ secrets.DOCKERHUB_USERNAME }}/customer-service:${{ needs.docker.outputs.image_tag }}"
-          ' banking-kubernetes/customer-service/deployment.yaml
+          ' banking-kubernetes/customer-service/deployment.yaml 
 
       - name: Configure Git
         run: |
