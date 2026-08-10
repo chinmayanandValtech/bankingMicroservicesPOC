@@ -1,4 +1,4 @@
-name: Server Registry CI/CD
+name: Service Registry CI/CD
 
 on:
   push:
