@@ -1,6 +1,7 @@
 package com.bank.account_service.service.impl;
 
 import com.bank.account_service.client.CustomerClient;
+import com.bank.account_service.client.TransactionLedgerClient;
 import com.bank.account_service.dto.AccountBalanceResponse;
 import com.bank.account_service.dto.AccountRequest;
 import com.bank.account_service.dto.AccountResponse;
@@ -30,13 +31,16 @@ public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final CustomerClient customerClient;
     private final CurrentUser currentUser;
+    private final TransactionLedgerClient transactionLedgerClient;
 
     public AccountServiceImpl(AccountRepository accountRepository,
                                CustomerClient customerClient,
-                               CurrentUser currentUser) {
+                               CurrentUser currentUser,
+                               TransactionLedgerClient transactionLedgerClient) {
         this.accountRepository = accountRepository;
         this.customerClient = customerClient;
         this.currentUser = currentUser;
+        this.transactionLedgerClient = transactionLedgerClient;
     }
 
     private String generateAccountNumber() {
@@ -82,6 +86,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional
     public AccountResponse createAccount(AccountRequest accountRequest) {
         assertCanActForCustomer(accountRequest.getCustomerId());
 
@@ -96,6 +101,15 @@ public class AccountServiceImpl implements AccountService {
                 .build();
 
         Account savedAccount = accountRepository.save(account);
+
+        // The opening deposit is money appearing on the account, so it belongs in
+        // the ledger like any other movement. If it cannot be recorded we roll the
+        // account back rather than open one whose balance nothing explains.
+        if (savedAccount.getBalance() != null
+                && savedAccount.getBalance().compareTo(BigDecimal.ZERO) > 0) {
+            transactionLedgerClient.recordOpeningDeposit(
+                    savedAccount.getAccountNumber(), savedAccount.getBalance());
+        }
 
         return toResponse(savedAccount, customer);
     }

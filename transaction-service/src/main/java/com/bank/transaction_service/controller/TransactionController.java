@@ -34,6 +34,16 @@ public class TransactionController {
 
     }
 
+    /**
+     * Internal only — guarded by InternalCallFilter. Lets account-service record
+     * the opening deposit, which it applies itself at account creation.
+     */
+    @PostMapping("/internal/ledger-entry")
+    public ResponseEntity<TransactionResponse> recordLedgerEntry(
+            @Valid @RequestBody LedgerEntryRequest request) {
+        return ResponseEntity.ok(transactionService.recordLedgerEntry(request));
+    }
+
     @GetMapping("/{accountNumber}")
     public ResponseEntity<List<TransactionHistoryResponse>> getTransactionHistory(
             @PathVariable String accountNumber) {

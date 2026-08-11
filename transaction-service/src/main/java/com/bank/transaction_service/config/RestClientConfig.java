@@ -1,5 +1,6 @@
 package com.bank.transaction_service.config;
 
+import com.bank.transaction_service.security.InternalCallFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,8 @@ import org.springframework.web.client.RestClient;
 public class RestClientConfig {
 
     @Bean
-    public RestClient accountRestClient(@Value("${account-service.url}") String accountServiceUrl) {
+    public RestClient accountRestClient(@Value("${account-service.url}") String accountServiceUrl,
+                                         @Value("${internal.call.secret}") String internalSecret) {
         return RestClient.builder()
                 .baseUrl(accountServiceUrl)
                 .requestInterceptor((request, body, execution) -> {
@@ -24,6 +26,9 @@ public class RestClientConfig {
                     if (token != null) {
                         request.getHeaders().set(HttpHeaders.AUTHORIZATION, "Bearer " + token);
                     }
+                    // account-service only moves money for internal callers, so that
+                    // every movement passes through here and lands in the ledger.
+                    request.getHeaders().set(InternalCallFilter.INTERNAL_CALL_HEADER, internalSecret);
                     return execution.execute(request, body);
                 })
                 .build();

@@ -9,11 +9,27 @@
         <outputRelativeToContentRoot value="true" />
         <module name="eureka-server" />
       </profile>
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.46/a5cfe99fdf320e84955ef653f2ce1bf789d11385/lombok-1.18.46.jar" />
+        </processorPath>
+      </profile>
+      <profile name="Annotation profile for financial-intelligence-service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
+        </processorPath>
+        <module name="financial-intelligence-service" />
+      </profile>
       <profile name="Annotation profile for transaction-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.46/lombok-1.18.46.jar" />
         </processorPath>
         <module name="account-service" />
@@ -22,6 +38,8 @@
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="financial-intelligence-service.main" target="17" />
+      <module name="financial-intelligence-service.test" target="17" />
       <module name="service-registry" target="17" />
     </bytecodeTargetLevel>
   </component>
@@ -30,6 +48,9 @@
       <module name="account-service" options="-parameters" />
       <module name="customer-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
+      <module name="financial-intelligence-service" options="-parameters" />
+      <module name="financial-intelligence-service.main" options="-parameters" />
+      <module name="financial-intelligence-service.test" options="-parameters" />
       <module name="transaction-service" options="-parameters" />
     </option>
   </component>

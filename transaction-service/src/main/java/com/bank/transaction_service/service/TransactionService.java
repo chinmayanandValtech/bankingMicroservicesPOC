@@ -12,5 +12,11 @@ public interface TransactionService {
 
     TransactionResponse transfer(TransferRequest request);
 
+    /**
+     * Writes a history record for money another service has already moved.
+     * Does not touch balances.
+     */
+    TransactionResponse recordLedgerEntry(LedgerEntryRequest request);
+
     List<TransactionHistoryResponse> getTransactionHistory(String accountNumber);
 }

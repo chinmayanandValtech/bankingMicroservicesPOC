@@ -63,10 +63,13 @@ public class TransactionServiceImpl implements TransactionService {
                         request.getAccountNumber(),
                         request);
 
+        // Money leaves this account, so it is the *from* side. Recording it as
+        // "to" would make a withdrawal look identical to a deposit, and anything
+        // deriving money-in vs money-out from these fields would read it backwards.
         Transaction transaction = Transaction.builder()
                 .transactionReference(UUID.randomUUID().toString())
                 .transactionType(TransactionType.WITHDRAWAL)
-                .toAccountNumber(request.getAccountNumber())
+                .fromAccountNumber(request.getAccountNumber())
                 .amount(request.getAmount())
                 .status(TransactionStatus.SUCCESS)
                 .remarks(request.getRemarks())
@@ -104,6 +107,30 @@ public class TransactionServiceImpl implements TransactionService {
                 .transactionReference(transaction.getTransactionReference())
                 .amount(transaction.getAmount())
                 .updatedBalance(account.getFromAccountBalance())
+                .status(transaction.getStatus())
+                .transactionTime(transaction.getCreatedAt())
+                .build();
+    }
+
+    @Override
+    public TransactionResponse recordLedgerEntry(LedgerEntryRequest request) {
+        // Balances are already correct — the calling service moved the money.
+        // This only writes the history record so the movement is explained.
+        Transaction transaction = Transaction.builder()
+                .transactionReference(UUID.randomUUID().toString())
+                .transactionType(TransactionType.valueOf(request.getTransactionType()))
+                .fromAccountNumber(request.getFromAccountNumber())
+                .toAccountNumber(request.getToAccountNumber())
+                .amount(request.getAmount())
+                .status(TransactionStatus.SUCCESS)
+                .remarks(request.getRemarks())
+                .build();
+
+        transactionRepository.save(transaction);
+
+        return TransactionResponse.builder()
+                .transactionReference(transaction.getTransactionReference())
+                .amount(transaction.getAmount())
                 .status(transaction.getStatus())
                 .transactionTime(transaction.getCreatedAt())
                 .build();
