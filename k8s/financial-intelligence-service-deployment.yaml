@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: financial-intelligence-service
+  namespace: banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: financial-intelligence-service
+  template:
+    metadata:
+      labels:
+        app: financial-intelligence-service
+    spec:
+      containers:
+        - name: financial-intelligence-service
+          image: saniyasyed66/financial-intelligence-service:jwtfix-191544
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 8084
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: kubernetes
+
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gemini-secret
+                  key: GEMINI_API_KEY

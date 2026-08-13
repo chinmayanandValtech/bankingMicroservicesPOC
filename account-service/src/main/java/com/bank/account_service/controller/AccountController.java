@@ -53,20 +53,32 @@ public class AccountController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{accountNumber}/deposit")
-    public ResponseEntity<AccountBalanceResponse> deposit(@PathVariable String accountNumber,
-                                                            @Valid @RequestBody DepositRequest request) {
-        return ResponseEntity.ok(accountService.deposit(accountNumber, request));
+    @PostMapping("/internal/{accountNumber}/deposit")
+    public ResponseEntity<AccountBalanceResponse> deposit(
+            @PathVariable String accountNumber,
+            @Valid @RequestBody DepositRequest request) {
+
+        return ResponseEntity.ok(
+                accountService.deposit(accountNumber, request)
+        );
     }
 
-    @PostMapping("/{accountNumber}/withdraw")
-    public ResponseEntity<AccountBalanceResponse> withdraw(@PathVariable String accountNumber,
-                                                             @Valid @RequestBody WithdrawRequest request) {
-        return ResponseEntity.ok(accountService.withdraw(accountNumber, request));
+    @PostMapping("/internal/{accountNumber}/withdraw")
+    public ResponseEntity<AccountBalanceResponse> withdraw(
+            @PathVariable String accountNumber,
+            @Valid @RequestBody WithdrawRequest request) {
+
+        return ResponseEntity.ok(
+                accountService.withdraw(accountNumber, request)
+        );
     }
 
-    @PostMapping("/transfer")
-    public ResponseEntity<TransferResponse> transfer(@Valid @RequestBody TransferRequest request) {
-        return ResponseEntity.ok(accountService.transfer(request));
+    @PostMapping("/internal/transfer")
+    public ResponseEntity<TransferResponse> transfer(
+            @Valid @RequestBody TransferRequest request) {
+
+        return ResponseEntity.ok(
+                accountService.transfer(request)
+        );
     }
 }

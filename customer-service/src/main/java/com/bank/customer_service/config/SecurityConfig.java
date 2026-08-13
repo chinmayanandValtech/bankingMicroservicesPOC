@@ -59,7 +59,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Profile("docker")
+    @Profile({"docker", "kubernetes"})
     public JwtDecoder dockerJwtDecoder(@Value("${keycloak.jwk-set-uri}") String jwkSetUri,
                                         @Value("${keycloak.issuer}") String issuer) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();

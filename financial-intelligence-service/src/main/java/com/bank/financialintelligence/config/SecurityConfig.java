@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
-    @Profile("docker")
+    @Profile({"docker", "kubernetes"})
     public JwtDecoder dockerJwtDecoder(
             @Value("${keycloak.jwk-set-uri}") String jwkSetUri,
             @Value("${keycloak.issuer}") String issuer) {

@@ -48,7 +48,7 @@ public class AccountClient {
                                           DepositRequest request) {
         try {
             return accountRestClient.post()
-                    .uri("/api/accounts/{accountNumber}/deposit", accountNumber)
+                    .uri("/api/accounts/internal/{accountNumber}/deposit", accountNumber)
                     .body(request)
                     .retrieve()
                     .body(AccountBalanceResponse.class);
@@ -72,7 +72,7 @@ public class AccountClient {
                                            WithdrawRequest request) {
         try {
             return accountRestClient.post()
-                    .uri("/api/accounts/{accountNumber}/withdraw", accountNumber)
+                    .uri("/api/accounts/internal/{accountNumber}/withdraw", accountNumber)
                     .body(request)
                     .retrieve()
                     .body(AccountBalanceResponse.class);
@@ -95,7 +95,7 @@ public class AccountClient {
     public TransferResponse transfer(TransferRequest request) {
         try {
             return accountRestClient.post()
-                    .uri("/api/accounts/transfer")
+                    .uri("/api/accounts/internal/transfer")
                     .body(request)
                     .retrieve()
                     .body(TransferResponse.class);

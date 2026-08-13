@@ -64,7 +64,7 @@ public class SecurityConfig {
     // host.docker.internal, but tokens are issued with iss=localhost:8180
     // (the hostname clients use). Fetch keys from one, validate issuer as the other.
     @Bean
-    @Profile("docker")
+    @Profile({"docker", "kubernetes"})
     public JwtDecoder dockerJwtDecoder(@Value("${keycloak.jwk-set-uri}") String jwkSetUri,
                                         @Value("${keycloak.issuer}") String issuer) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
