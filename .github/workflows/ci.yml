@@ -1,0 +1,38 @@
+name: Banking Microservices CI
+
+on:
+  push:
+    branches:
+      - saniya-dev-newAdditionsFinal
+  pull_request:
+    branches:
+      - saniya-dev-newAdditionsFinal
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service:
+          - account-service
+          - api-gateway
+          - customer-service
+          - eureka-server
+          - financial-intelligence-service
+          - transaction-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Build ${{ matrix.service }}
+        working-directory: ./${{ matrix.service }}
+        run: ./mvnw clean package -DskipTests
