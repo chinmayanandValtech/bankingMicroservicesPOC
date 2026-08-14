@@ -36,3 +36,21 @@ jobs:
       - name: Build ${{ matrix.service }}
         working-directory: ./${{ matrix.service }}
         run: ./mvnw clean package -DskipTests
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.SANIYA_DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        working-directory: ./${{ matrix.service }}
+        run: |
+          docker build \
+            -t ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
+            .
+
+      - name: Push Docker image
+        run: |
+          docker push \
+            ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
