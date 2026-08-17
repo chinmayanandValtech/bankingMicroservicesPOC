@@ -12,7 +12,8 @@ public class TraceService {
 
     public TraceService(
             RestClient.Builder builder,
-            @Value("${observability.zipkin.base-url}") String zipkinBaseUrl
+            @Value("${OBSERVABILITY_ZIPKIN_BASE_URL:http://zipkin:9411}")
+            String zipkinBaseUrl
     ) {
         this.restClient = builder
                 .baseUrl(zipkinBaseUrl)
