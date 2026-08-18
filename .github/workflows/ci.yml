@@ -58,3 +58,50 @@ jobs:
 
           docker push \
             ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
+
+  deploy:
+    name: Deploy to AWS Kubernetes
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SANIYA_EC2_HOST }}
+          username: ${{ secrets.SANIYA_EC2_USERNAME }}
+          key: ${{ secrets.SANIYA_EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "Updating Kubernetes deployments..."
+
+            sudo kubectl -n banking set image deployment/account-service \
+              account-service=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/account-service:${{ github.sha }}
+
+            sudo kubectl -n banking set image deployment/api-gateway \
+              api-gateway=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/api-gateway:${{ github.sha }}
+
+            sudo kubectl -n banking set image deployment/customer-service \
+              customer-service=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/customer-service:${{ github.sha }}
+
+            sudo kubectl -n banking set image deployment/eureka-server \
+              eureka-server=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/eureka-server:${{ github.sha }}
+
+            sudo kubectl -n banking set image deployment/financial-intelligence-service \
+              financial-intelligence-service=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/financial-intelligence-service:${{ github.sha }}
+
+            sudo kubectl -n banking set image deployment/transaction-service \
+              transaction-service=${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/transaction-service:${{ github.sha }}
+
+            echo "Waiting for deployments..."
+
+            sudo kubectl -n banking rollout status deployment/account-service --timeout=180s
+            sudo kubectl -n banking rollout status deployment/api-gateway --timeout=180s
+            sudo kubectl -n banking rollout status deployment/customer-service --timeout=180s
+            sudo kubectl -n banking rollout status deployment/eureka-server --timeout=180s
+            sudo kubectl -n banking rollout status deployment/financial-intelligence-service --timeout=180s
+            sudo kubectl -n banking rollout status deployment/transaction-service --timeout=180s
+
+            echo "Deployment completed successfully."
+
+            sudo kubectl get pods -n banking
