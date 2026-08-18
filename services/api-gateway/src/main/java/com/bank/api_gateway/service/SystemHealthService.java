@@ -85,6 +85,17 @@ public class SystemHealthService {
                     .ofNanos(System.nanoTime() - start)
                     .toMillis();
 
+            System.err.println(
+                    "Health check failed for "
+                            + serviceName
+                            + " using "
+                            + serviceUrl
+                            + ": "
+                            + e.getClass().getName()
+                            + " - "
+                            + e.getMessage()
+            );
+
             return new ServiceHealthResponse(
                     serviceName,
                     "DOWN",
