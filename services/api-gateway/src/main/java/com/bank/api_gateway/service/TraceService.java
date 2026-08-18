@@ -11,11 +11,10 @@ public class TraceService {
     private final RestClient restClient;
 
     public TraceService(
-            RestClient.Builder builder,
             @Value("${OBSERVABILITY_ZIPKIN_BASE_URL:http://zipkin:9411}")
             String zipkinBaseUrl
     ) {
-        this.restClient = builder
+        this.restClient = RestClient.builder()
                 .baseUrl(zipkinBaseUrl)
                 .build();
     }
