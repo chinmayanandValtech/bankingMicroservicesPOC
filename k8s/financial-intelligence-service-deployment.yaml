@@ -25,6 +25,12 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: kubernetes
 
+            - name: KEYCLOAK_JWK_SET_URI
+              value: "http://172.31.0.85:8180/realms/banking/protocol/openid-connect/certs"
+
+            - name: KEYCLOAK_ISSUER
+              value: "http://13.203.97.183:8180/realms/banking"
+
             - name: GEMINI_API_KEY
               valueFrom:
                 secretKeyRef:
