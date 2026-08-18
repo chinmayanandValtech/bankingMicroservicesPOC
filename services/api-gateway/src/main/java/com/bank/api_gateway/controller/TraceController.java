@@ -4,6 +4,7 @@ import com.bank.api_gateway.service.TraceService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/observability")
@@ -22,13 +23,25 @@ public class TraceController {
         this.traceService = traceService;
     }
 
+    @GetMapping("/traces")
+    public Mono<ResponseEntity<JsonNode>> getRecentTraces(
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+
+        return traceService
+                .getRecentTraces(safeLimit)
+                .map(ResponseEntity::ok);
+    }
+
     @GetMapping("/traces/{traceId}")
-    public ResponseEntity<JsonNode> getTrace(
+    public Mono<ResponseEntity<JsonNode>> getTrace(
             @PathVariable String traceId
     ) {
 
-        JsonNode trace = traceService.getTrace(traceId);
-
-        return ResponseEntity.ok(trace);
+        return traceService
+                .getTrace(traceId)
+                .map(ResponseEntity::ok);
     }
 }
