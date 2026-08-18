@@ -47,10 +47,14 @@ jobs:
         working-directory: ./${{ matrix.service }}
         run: |
           docker build \
+            -t ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }} \
             -t ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest \
             .
 
       - name: Push Docker image
         run: |
+          docker push \
+            ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:${{ github.sha }}
+
           docker push \
             ${{ secrets.SANIYA_DOCKERHUB_USERNAME }}/${{ matrix.service }}:latest
