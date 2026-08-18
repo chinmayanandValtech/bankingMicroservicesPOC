@@ -7,6 +7,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/observability")
+@CrossOrigin(
+        origins = {
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://banking-management-frontend.vercel.app"
+        }
+)
 public class TraceController {
 
     private final TraceService traceService;
