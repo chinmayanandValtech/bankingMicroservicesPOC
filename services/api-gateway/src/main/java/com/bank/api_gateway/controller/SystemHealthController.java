@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
         origins = {
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://banking-management-frontend.vercel.app"
+                "https://banking-management-frontend-ghstiv66k.vercel.app"
         }
 )
 public class SystemHealthController {
