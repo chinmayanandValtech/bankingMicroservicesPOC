@@ -4,104 +4,123 @@ import com.bank.api_gateway.dto.HealthResponse;
 import com.bank.api_gateway.dto.ServiceHealthResponse;
 import com.bank.api_gateway.dto.SystemHealthResponse;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class SystemHealthService {
 
-    private final RestClient restClient;
+    private final WebClient.Builder webClientBuilder;
 
-    public SystemHealthService(RestClient.Builder builder) {
-        this.restClient = builder.build();
+    public SystemHealthService(WebClient.Builder webClientBuilder) {
+        this.webClientBuilder = webClientBuilder;
     }
 
-    public SystemHealthResponse getSystemHealth() {
+    public Mono<SystemHealthResponse> getSystemHealth() {
 
-        List<ServiceHealthResponse> services = new ArrayList<>();
+        Mono<ServiceHealthResponse> accountService =
+                checkService(
+                        "Account Service",
+                        "http://ACCOUNT-SERVICE"
+                );
 
-        services.add(checkService(
-                "Account Service",
-                "http://ACCOUNT-SERVICE"
-        ));
+        Mono<ServiceHealthResponse> customerService =
+                checkService(
+                        "Customer Service",
+                        "http://CUSTOMER-SERVICE"
+                );
 
-        services.add(checkService(
-                "Customer Service",
-                "http://CUSTOMER-SERVICE"
-        ));
+        Mono<ServiceHealthResponse> transactionService =
+                checkService(
+                        "Transaction Service",
+                        "http://TRANSACTION-SERVICE"
+                );
 
-        services.add(checkService(
-                "Transaction Service",
-                "http://TRANSACTION-SERVICE"
-        ));
+        Mono<ServiceHealthResponse> authService =
+                checkService(
+                        "Auth Service",
+                        "http://AUTH-SERVICE"
+                );
 
-        services.add(checkService(
-                "Auth Service",
-                "http://AUTH-SERVICE"
-        ));
+        return Mono.zip(
+                accountService,
+                customerService,
+                transactionService,
+                authService
+        ).map(tuple -> {
 
-        return new SystemHealthResponse(
-                calculateOverallStatus(services),
-                Instant.now(),
-                services
-        );
+            List<ServiceHealthResponse> services = List.of(
+                    tuple.getT1(),
+                    tuple.getT2(),
+                    tuple.getT3(),
+                    tuple.getT4()
+            );
+
+            return new SystemHealthResponse(
+                    calculateOverallStatus(services),
+                    Instant.now(),
+                    services
+            );
+        });
     }
 
-    private ServiceHealthResponse checkService(
+    private Mono<ServiceHealthResponse> checkService(
             String serviceName,
             String serviceUrl
     ) {
 
         long start = System.nanoTime();
 
-        try {
+        return webClientBuilder
+                .build()
+                .get()
+                .uri(serviceUrl + "/actuator/health")
+                .retrieve()
+                .bodyToMono(HealthResponse.class)
+                .timeout(Duration.ofSeconds(3))
+                .map(response -> {
 
-            HealthResponse response = restClient.get()
-                    .uri(serviceUrl + "/actuator/health")
-                    .retrieve()
-                    .body(HealthResponse.class);
+                    long duration = Duration
+                            .ofNanos(System.nanoTime() - start)
+                            .toMillis();
 
-            long duration = Duration
-                    .ofNanos(System.nanoTime() - start)
-                    .toMillis();
+                    return new ServiceHealthResponse(
+                            serviceName,
+                            response != null
+                                    ? response.status()
+                                    : "UNKNOWN",
+                            duration
+                    );
+                })
+                .onErrorResume(exception -> {
 
-            String status = response != null
-                    ? response.status()
-                    : "UNKNOWN";
+                    long duration = Duration
+                            .ofNanos(System.nanoTime() - start)
+                            .toMillis();
 
-            return new ServiceHealthResponse(
-                    serviceName,
-                    status,
-                    duration
-            );
+                    System.err.println(
+                            "Health check failed for "
+                                    + serviceName
+                                    + " using "
+                                    + serviceUrl
+                                    + ": "
+                                    + exception.getClass().getName()
+                                    + " - "
+                                    + exception.getMessage()
+                    );
 
-        } catch (Exception e) {
-
-            long duration = Duration
-                    .ofNanos(System.nanoTime() - start)
-                    .toMillis();
-
-            System.err.println(
-                    "Health check failed for "
-                            + serviceName
-                            + " using "
-                            + serviceUrl
-                            + ": "
-                            + e.getClass().getName()
-                            + " - "
-                            + e.getMessage()
-            );
-
-            return new ServiceHealthResponse(
-                    serviceName,
-                    "DOWN",
-                    duration
-            );
-        }
+                    return Mono.just(
+                            new ServiceHealthResponse(
+                                    serviceName,
+                                    "DOWN",
+                                    duration
+                            )
+                    );
+                });
     }
 
     private String calculateOverallStatus(
