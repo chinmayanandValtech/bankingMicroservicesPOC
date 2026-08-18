@@ -10,13 +10,6 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/system")
-@CrossOrigin(
-        origins = {
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://banking-management-frontend-ghstiv66k.vercel.app"
-        }
-)
 public class SystemHealthController {
 
     private final SystemHealthService systemHealthService;
