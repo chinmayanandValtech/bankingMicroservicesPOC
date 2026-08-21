@@ -75,4 +75,32 @@ public class ApplicationUserImpl implements ApplicationUserService {
                 .message("User registered successfully")
                 .build();
     }
+
+    
+    @Override
+    public RegisterResponseDTO updateUser(RegisterRequestDTO request) {
+        CustomerResponseDTO customerResponse =
+                customerClient.getCustomerById(
+                        CustomerLookupRequestDTO.builder()
+                                .customerId(request.getCustomerId())
+                                .build());
+
+        ApplicationUser existingUser = applicationUserRepository
+                .findByCustomerId(customerResponse.getCustomerId())
+                .orElseThrow(() -> new CustomErrorException("Customer is not registered."));
+
+        existingUser.setEmail(customerResponse.getEmail());
+        existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
+        existingUser.setUpdateAt(LocalDateTime.now());
+        // role, enabled, createdAt intentionally left untouched
+
+        ApplicationUser savedUser = applicationUserRepository.save(existingUser);
+
+        return RegisterResponseDTO.builder()
+                .userId(savedUser.getId())
+                .customerId(savedUser.getCustomerId())
+                .email(savedUser.getEmail())
+                .message("User updated successfully")
+                .build();
+    }
 }
